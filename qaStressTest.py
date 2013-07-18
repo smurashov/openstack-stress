@@ -33,6 +33,9 @@ optional arguments:
   -keepvm           keep the servers
   -noconfirm        do not confirm action before continuing
   -voltype          include volume types in the tests
+  -flavorname       The name of flavor which will be used
+  -maxvolumesize    Max posible size of volume
+  -fixedvolumesize  All volumes will be created with specified size
 """
 
 
@@ -103,6 +106,12 @@ parser.add_argument("-noconfirm",  dest="confirm",
                     help="do not confirm action before continuing, "
                          "default is do confirmation",
                     action="store_false",  default=True)
+parser.add_argument("-flavorname", dest="flavorname", type=str,
+                    help="flavor name", default="m1.small")
+parser.add_argument("-maxvolumesize", dest="maxvolumesize", type=int,
+                    help="Max volume size", default=0)
+parser.add_argument("-fixedvolumesize", dest="fixedvolumesize", type=int,
+                    help="Fixed volume size", default=0)
 
 args = parser.parse_args()
 
@@ -398,7 +407,12 @@ class OpenStackThread(threading.Thread):
                 vol_name = OpenStackThread.VOLUME_NAME + "-" +\
                     str(self.threadid) + "-" + str(a)
                 vol_desc = "Created by qaStressTest thread-"+str(self.threadid)
-                vol_size = randint(1,  5)
+                if args.maxvolumesize == 0 and args.fixedvolumesize!=0:
+                    vol_size=args.fixedvolumesize
+                elif args.maxvolumesize ==0:
+                    vol_size=randint(1, 5)
+                else:
+                    vol_size = randint(1,  args.maxvolumesize)
                 try:
                     vol = self.cindercl.volumes.\
                         create(vol_size, display_name=vol_name,
@@ -1024,9 +1038,9 @@ class OpenStackThread(threading.Thread):
 
         # get list of flavors and use the tiny one
         flavors = self.novacl.flavors.list()
-        tinyFlavor = None
+        tinyFlavor = "m1.small"
         for flav in flavors:
-            if flav.name == "m1.small":
+            if flav.name == args.flavorname:
                 tinyFlavor = flav
                 break
 
